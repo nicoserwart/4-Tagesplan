@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hybrid Training Tracker</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js für Fortschrittsanalysen -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         tailwind.config = {
@@ -28,6 +30,7 @@
             background-color: #0f172a;
             color: #f8fafc;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
         .hide-scrollbar::-webkit-scrollbar {
             display: none;
@@ -38,22 +41,33 @@
         }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen pb-20">
+<body class="bg-slate-900 text-slate-100 min-h-screen pb-28">
 
     <!-- Header Navigation -->
-    <header class="sticky top-0 z-50 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3">
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 py-3">
         <div class="max-w-4xl mx-auto flex items-center justify-between">
             <div>
                 <h1 class="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">HYBRID LOG</h1>
-                <p class="text-xs text-slate-400">SBD Strength + PPL Hypertrophy</p>
+                <p class="text-xs text-slate-400">Low-Volume | SBD + PPL</p>
             </div>
-            <button onclick="exportData()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-3 rounded-lg border border-slate-700 transition">
-                Daten Export
-            </button>
+            <div class="flex gap-2">
+                <button onclick="exportData()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-2.5 rounded-lg border border-slate-700 transition">
+                    Export
+                </button>
+                <label class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-2.5 rounded-lg border border-slate-700 transition cursor-pointer">
+                    Import
+                    <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="hidden">
+                </label>
+            </div>
         </div>
     </header>
 
     <main class="max-w-4xl mx-auto p-4 space-y-6">
+
+        <!-- Custom Notification Modal / Toast -->
+        <div id="toast" class="hidden fixed top-16 left-1/2 transform -translate-x-1/2 z-50 bg-blue-600 text-white text-xs font-semibold px-4 py-2 rounded-full shadow-lg transition-all duration-300">
+            Meldung
+        </div>
 
         <!-- Navigation Tabs -->
         <div class="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
@@ -73,19 +87,19 @@
             <!-- Day Selector -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <button onclick="selectDay('day1')" id="day-btn-day1" class="day-select-btn p-3 rounded-xl border border-blue-500/50 bg-blue-900/20 text-left transition">
-                    <span class="text-xs font-semibold text-blue-400 block">TAG 1 (MO)</span>
+                    <span class="text-xs font-semibold text-blue-400 block">TAG 1</span>
                     <span class="text-sm font-bold text-slate-100">SBD Fullbody</span>
                 </button>
                 <button onclick="selectDay('day2')" id="day-btn-day2" class="day-select-btn p-3 rounded-xl border border-slate-800 bg-slate-800/50 text-left transition hover:border-slate-700">
-                    <span class="text-xs font-semibold text-slate-400 block">TAG 2 (MI)</span>
+                    <span class="text-xs font-semibold text-slate-400 block">TAG 2</span>
                     <span class="text-sm font-bold text-slate-100">Push</span>
                 </button>
                 <button onclick="selectDay('day3')" id="day-btn-day3" class="day-select-btn p-3 rounded-xl border border-slate-800 bg-slate-800/50 text-left transition hover:border-slate-700">
-                    <span class="text-xs font-semibold text-slate-400 block">TAG 3 (DO)</span>
+                    <span class="text-xs font-semibold text-slate-400 block">TAG 3</span>
                     <span class="text-sm font-bold text-slate-100">Pull</span>
                 </button>
                 <button onclick="selectDay('day4')" id="day-btn-day4" class="day-select-btn p-3 rounded-xl border border-slate-800 bg-slate-800/50 text-left transition hover:border-slate-700">
-                    <span class="text-xs font-semibold text-slate-400 block">TAG 4 (SA)</span>
+                    <span class="text-xs font-semibold text-slate-400 block">TAG 4</span>
                     <span class="text-sm font-bold text-slate-100">Legs</span>
                 </button>
             </div>
@@ -94,16 +108,16 @@
             <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-800 flex justify-between items-center">
                 <div>
                     <h2 id="active-day-title" class="text-lg font-bold text-white">SBD Fullbody</h2>
-                    <p id="active-day-desc" class="text-xs text-slate-400">Maximalkraft-Fokus | Top-Set + Back-Off-Set</p>
+                    <p id="active-day-desc" class="text-xs text-slate-400">Maximalkraft-Fokus | Low Volume</p>
                 </div>
-                <button onclick="finishSession()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-900/20 transition">
+                <button onclick="finishSession()" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-emerald-900/20 transition">
                     Einheit Beenden
                 </button>
             </div>
 
             <!-- Exercises Container -->
             <div id="exercises-list" class="space-y-4">
-                <!-- Exercises dynamically injected here -->
+                <!-- Übungen werden dynamisch geladen -->
             </div>
         </section>
 
@@ -111,7 +125,7 @@
         <section id="view-history" class="hidden space-y-4">
             <h2 class="text-lg font-bold text-slate-200">Abgeschlossene Einheiten</h2>
             <div id="history-container" class="space-y-3">
-                <!-- Logged sessions injected here -->
+                <!-- Geloggte Sessions werden hier eingefügt -->
             </div>
         </section>
 
@@ -120,12 +134,12 @@
             <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-800">
                 <label class="block text-xs text-slate-400 mb-2 font-semibold">ÜBUNG FÜR ANALYSE AUSWÄHLEN</label>
                 <select id="analytics-exercise-select" onchange="renderChart()" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500">
-                    <!-- Dynamic options -->
+                    <!-- Übungsoptionen -->
                 </select>
             </div>
 
             <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-800">
-                <h3 id="chart-title" class="text-sm font-bold text-slate-300 mb-4">Top-Set Gewicht über Zeit</h3>
+                <h3 id="chart-title" class="text-sm font-bold text-slate-300 mb-4">Top-Set Gewicht über Zeit (kg)</h3>
                 <div class="h-64">
                     <canvas id="progressChart"></canvas>
                 </div>
@@ -134,54 +148,76 @@
 
     </main>
 
+    <!-- Floating Rest Timer Controller -->
+    <div id="timer-widget" class="fixed bottom-4 right-4 z-50 bg-slate-800/95 border border-slate-700 backdrop-blur-md p-3 rounded-2xl shadow-2xl flex flex-col items-center gap-2 max-w-xs w-full sm:w-auto">
+        <div class="flex items-center justify-between w-full gap-4">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">⏱️</span>
+                <span id="timer-display" class="font-mono text-xl font-bold text-blue-400">00:00</span>
+            </div>
+            <div class="flex gap-1">
+                <button onclick="toggleTimer()" id="timer-start-btn" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition">
+                    Start
+                </button>
+                <button onclick="resetTimer()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg font-semibold transition">
+                    ↺
+                </button>
+            </div>
+        </div>
+        <div class="flex gap-1.5 w-full justify-between pt-1 border-t border-slate-700/60">
+            <button onclick="setTimerPreset(60)" class="flex-1 bg-slate-900/80 hover:bg-slate-700 text-slate-300 text-[11px] py-1 rounded border border-slate-700 text-center font-medium">60s</button>
+            <button onclick="setTimerPreset(90)" class="flex-1 bg-slate-900/80 hover:bg-slate-700 text-slate-300 text-[11px] py-1 rounded border border-slate-700 text-center font-medium">90s</button>
+            <button onclick="setTimerPreset(120)" class="flex-1 bg-slate-900/80 hover:bg-slate-700 text-slate-300 text-[11px] py-1 rounded border border-slate-700 text-center font-medium">2m</button>
+            <button onclick="setTimerPreset(180)" class="flex-1 bg-slate-900/80 hover:bg-slate-700 text-slate-300 text-[11px] py-1 rounded border border-slate-700 text-center font-medium">3m</button>
+        </div>
+    </div>
+
     <script>
-        // Routine Structure based on user request & PDF philosophy
+        // Überarbeiteter Trainingsplan nach exakter Vorgabe
         const workoutPlan = {
             day1: {
                 title: "Tag 1: SBD Fullbody",
                 desc: "Maximalkraft-Fokus | Low Volume, High Intensity",
                 exercises: [
-                    { id: "squat", name: "Kniebeuge (Barbell Squat)", topReps: "3-5", backReps: "6-8" },
-                    { id: "bench", name: "Flachbankdrücken (Bench Press)", topReps: "3-5", backReps: "6-8" },
-                    { id: "pullups", name: "Weighted Pull-ups", topReps: "3-5", backReps: "6-8" },
-                    { id: "rdl", name: "Rumänisches Kreuzheben (RDL)", topReps: "5-6", backReps: "8-10" },
-                    { id: "side_raises_f", name: "Seitheben (Kabel / Maschine)", topReps: "8-10", backReps: "10-12" },
-                    { id: "triceps_f", name: "Trizepsdrücken Kabel", topReps: "8-10", backReps: "10-12" },
-                    { id: "biceps_f", name: "Kabel-Curls", topReps: "8-10", backReps: "10-12" }
+                    { id: "squat", name: "Kniebeuge (Barbell Squat)", hasBackoff2: false, topReps: "3-5", backReps: "6-8" },
+                    { id: "bench", name: "Langhantel-Bankdrücken (Flat Bench Press)", hasBackoff2: false, topReps: "3-5", backReps: "6-8" },
+                    { id: "pullups", name: "Klimmzüge mit Zusatzgewicht (Weighted Pull-ups)", hasBackoff2: false, topReps: "3-5", backReps: "6-8" },
+                    { id: "rdl", name: "Rumänisches Kreuzheben (RDL)", hasBackoff2: false, topReps: "5-6", backReps: "8-10" },
+                    { id: "side_raises_f", name: "Seitheben (Kabelzug / Maschine)", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "triceps_f", name: "Trizepsdrücken am Kabelzug", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "biceps_f", name: "Bizepscurls am Kabelzug", hasBackoff2: false, topReps: "8-10", backReps: "10-12" }
                 ]
             },
             day2: {
                 title: "Tag 2: Push Hypertrophie",
                 desc: "Hypertrophie-Fokus | Top-Set + Back-Off-Set",
                 exercises: [
-                    { id: "bench_p", name: "Flachbankdrücken", topReps: "6-8", backReps: "8-10" },
-                    { id: "chest_press", name: "Brustpresse (Maschine)", topReps: "8-10", backReps: "10-12" },
-                    { id: "side_raises_p", name: "Seitheben Maschine", topReps: "8-10", backReps: "10-12" },
-                    { id: "katana_ext", name: "Katana Extensions / Trizeps Kabel", topReps: "8-10", backReps: "10-12" },
-                    { id: "leg_ext_p", name: "Beinstrecker (Quad Pump)", topReps: "8-10", backReps: "10-12" },
-                    { id: "calves_p", name: "Stehendes Wadenheben (2s Pause)", topReps: "6-8", backReps: "10-12" }
+                    { id: "bench_p", name: "Flaches Langhantel-Bankdrücken", hasBackoff2: false, topReps: "6-8", backReps: "8-10" },
+                    { id: "chest_press", name: "Brustpresse (Chest Press Maschine)", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "side_raises_p", name: "Seitheben Maschine", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "katana_ext", name: "Katana Extensions / Trizeps Kabel", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "calves_p", name: "Stehendes Wadenheben (2s Pause in Dehnung)", hasBackoff2: false, topReps: "6-8", backReps: "10-12" }
                 ]
             },
             day3: {
                 title: "Tag 3: Pull Hypertrophie",
-                desc: "Hypertrophie-Fokus | Voller Rücken- & Bizepsreiz",
+                desc: "Hypertrophie-Fokus | Rücken, Hintere Schulter, Bizeps & Hamstrings",
                 exercises: [
-                    { id: "lat_pulldown_close", name: "Enger Latzug (Unter-/Neutralgriff)", topReps: "6-8", backReps: "8-10" },
-                    { id: "chest_supported_row", name: "Brustgestütztes Rudern (Obergriff)", topReps: "6-8", backReps: "8-10" },
-                    { id: "rev_flyes", name: "Reverse Cable Flyes", topReps: "8-10", backReps: "10-12" },
-                    { id: "scott_curls", name: "Kabel- / Scott-Curls", topReps: "8-10", backReps: "10-12" },
-                    { id: "leg_curl_p", name: "Beinbeuger sitzend", topReps: "8-10", backReps: "10-12" }
+                    { id: "lat_pulldown_close", name: "Enger Latzug (Unter-/Neutralgriff)", hasBackoff2: false, topReps: "6-8", backReps: "8-10" },
+                    { id: "chest_supported_row", name: "Brustgestütztes Rudern (Obergriff)", hasBackoff2: false, topReps: "6-8", backReps: "8-10" },
+                    { id: "rev_flyes", name: "Reverse Cable Flyes", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "scott_curls", name: "Kabel- / Scott-Curls", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "leg_curl_p", name: "Sitzender Beinbeuger", hasBackoff2: false, topReps: "8-10", backReps: "10-12" }
                 ]
             },
             day4: {
                 title: "Tag 4: Legs Hypertrophie",
-                desc: "Hypertrophie-Fokus | Unterkörper & Schulter-Volume",
+                desc: "Schlank & Zielgerichtet | Quads, Waden & Schulter-Volumen",
                 exercises: [
-                    { id: "hack_squat", name: "Hackenschmidt / Leg Press", topReps: "6-8", backReps: "8-10" },
-                    { id: "leg_curl_l", name: "Beinbeuger sitzend", topReps: "8-10", backReps: "10-12" },
-                    { id: "leg_ext_l", name: "Beinstrecker", topReps: "8-10", backReps: "10-12" },
-                    { id: "side_raises_l", name: "Seitheben am Kabelzug", topReps: "8-10", backReps: "10-12" },
-                    { id: "calves_l", name: "Stehendes Wadenheben (2s Pause)", topReps: "6-8", backReps: "10-12" }
+                    { id: "hack_squat", name: "Hackenschmidt-Kniebeuge (oder Leg Press)", hasBackoff2: false, topReps: "6-8", backReps: "8-10" },
+                    { id: "leg_ext_l", name: "Beinstrecker", hasBackoff2: false, topReps: "8-10", backReps: "10-12" },
+                    { id: "side_raises_l", name: "Seitheben am Kabelzug", hasBackoff2: true, topReps: "8-10", backReps: "10-12" },
+                    { id: "calves_l", name: "Stehendes Wadenheben (2s Pause in Dehnung)", hasBackoff2: false, topReps: "6-8", backReps: "10-12" }
                 ]
             }
         };
@@ -190,16 +226,49 @@
         let workoutLogs = JSON.parse(localStorage.getItem('workoutLogs') || '[]');
         let chartInstance = null;
 
+        // Timer State
+        let timerDuration = 120;
+        let timerRemaining = 120;
+        let timerInterval = null;
+        let timerRunning = false;
+
+        // Sound via Web Audio API (keine externen Assets nötig)
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.5);
+            } catch (e) {
+                console.log("Audio play blocked or unsupported", e);
+            }
+        }
+
         // Initialize App
         document.addEventListener('DOMContentLoaded', () => {
             selectDay('day1');
             populateAnalyticsSelect();
+            updateTimerDisplay();
         });
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
 
         function selectDay(dayKey) {
             currentDayKey = dayKey;
             
-            // Highlight Buttons
             document.querySelectorAll('.day-select-btn').forEach(btn => {
                 btn.classList.remove('border-blue-500/50', 'bg-blue-900/20');
                 btn.classList.add('border-slate-800', 'bg-slate-800/50');
@@ -232,22 +301,41 @@
 
             exercises.forEach((ex, idx) => {
                 const lastPerf = getLastExercisePerformance(ex.name);
-                let lastText = "Kein Eintrag vorhanden";
+                let lastText = "Kein vorheriger Eintrag";
                 if (lastPerf) {
-                    lastText = `Letztes Mal: Top: ${lastPerf.topWeight || 0}kg x ${lastPerf.topReps || 0} | Back-Off: ${lastPerf.backWeight || 0}kg x ${lastPerf.backReps || 0}`;
+                    let back2Str = lastPerf.backWeight2 ? ` | Back 2: ${lastPerf.backWeight2}kg x ${lastPerf.backReps2}` : '';
+                    lastText = `Letztes Mal: Top: ${lastPerf.topWeight || 0}kg x ${lastPerf.topReps || 0} | Back 1: ${lastPerf.backWeight || 0}kg x ${lastPerf.backReps || 0}${back2Str}`;
                 }
 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800/40 p-4 rounded-xl border border-slate-800 space-y-3";
+                
+                let backoff2Html = '';
+                if (ex.hasBackoff2) {
+                    backoff2Html = `
+                        <!-- BACK-OFF SET 2 -->
+                        <div class="bg-slate-900/80 p-3 rounded-lg border border-indigo-500/30 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-xs font-bold text-indigo-400">BACK-OFF SET 2</span>
+                                <span class="text-xs text-slate-400">Ziel: ${ex.backReps} Wdh.</span>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="number" step="0.5" id="ex-${idx}-back2-w" placeholder="${lastPerf && lastPerf.backWeight2 ? lastPerf.backWeight2 : 'kg'}" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-indigo-500">
+                                <input type="number" id="ex-${idx}-back2-r" placeholder="${lastPerf && lastPerf.backReps2 ? lastPerf.backReps2 : 'Wdh'}" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+                        </div>
+                    `;
+                }
+
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
                         <div>
-                            <h3 class="font-bold text-slate-100">${ex.name}</h3>
-                            <p class="text-xs text-blue-400 font-medium">${lastText}</p>
+                            <h3 class="font-bold text-slate-100 text-sm sm:text-base">${ex.name}</h3>
+                            <p class="text-xs text-blue-400 font-medium mt-0.5">${lastText}</p>
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div class="grid grid-cols-1 ${ex.hasBackoff2 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 pt-1">
                         <!-- TOP SET -->
                         <div class="bg-slate-900/80 p-3 rounded-lg border border-red-500/30 space-y-2">
                             <div class="flex justify-between items-center">
@@ -255,22 +343,24 @@
                                 <span class="text-xs text-slate-400">Ziel: ${ex.topReps} Wdh.</span>
                             </div>
                             <div class="flex gap-2">
-                                <input type="number" step="0.5" id="ex-${idx}-top-w" placeholder="kg" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-red-500">
-                                <input type="number" id="ex-${idx}-top-r" placeholder="Wdh" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-red-500">
+                                <input type="number" step="0.5" id="ex-${idx}-top-w" placeholder="${lastPerf && lastPerf.topWeight ? lastPerf.topWeight : 'kg'}" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-red-500">
+                                <input type="number" id="ex-${idx}-top-r" placeholder="${lastPerf && lastPerf.topReps ? lastPerf.topReps : 'Wdh'}" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-red-500">
                             </div>
                         </div>
 
-                        <!-- BACK-OFF SET -->
+                        <!-- BACK-OFF SET 1 -->
                         <div class="bg-slate-900/80 p-3 rounded-lg border border-blue-500/30 space-y-2">
                             <div class="flex justify-between items-center">
-                                <span class="text-xs font-bold text-blue-400">BACK-OFF SET (-10 bis -15%)</span>
+                                <span class="text-xs font-bold text-blue-400">BACK-OFF SET 1</span>
                                 <span class="text-xs text-slate-400">Ziel: ${ex.backReps} Wdh.</span>
                             </div>
                             <div class="flex gap-2">
-                                <input type="number" step="0.5" id="ex-${idx}-back-w" placeholder="kg" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-blue-500">
-                                <input type="number" id="ex-${idx}-back-r" placeholder="Wdh" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-blue-500">
+                                <input type="number" step="0.5" id="ex-${idx}-back-w" placeholder="${lastPerf && lastPerf.backWeight ? lastPerf.backWeight : 'kg'}" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-blue-500">
+                                <input type="number" id="ex-${idx}-back-r" placeholder="${lastPerf && lastPerf.backReps ? lastPerf.backReps : 'Wdh'}" class="w-1/2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-center font-semibold text-white focus:outline-none focus:border-blue-500">
                             </div>
                         </div>
+
+                        ${backoff2Html}
                     </div>
                 `;
                 container.appendChild(card);
@@ -293,8 +383,13 @@
                 const topR = document.getElementById(`ex-${idx}-top-r`).value;
                 const backW = document.getElementById(`ex-${idx}-back-w`).value;
                 const backR = document.getElementById(`ex-${idx}-back-r`).value;
+                
+                const back2ElW = document.getElementById(`ex-${idx}-back2-w`);
+                const back2ElR = document.getElementById(`ex-${idx}-back2-r`);
+                const backW2 = back2ElW ? back2ElW.value : null;
+                const backR2 = back2ElR ? back2ElR.value : null;
 
-                if (topW || topR || backW || backR) {
+                if (topW || topR || backW || backR || backW2 || backR2) {
                     filledCount++;
                 }
 
@@ -303,19 +398,21 @@
                     topWeight: topW ? parseFloat(topW) : 0,
                     topReps: topR ? parseInt(topR) : 0,
                     backWeight: backW ? parseFloat(backW) : 0,
-                    backReps: backR ? parseInt(backR) : 0
+                    backReps: backR ? parseInt(backR) : 0,
+                    backWeight2: backW2 ? parseFloat(backW2) : null,
+                    backReps2: backR2 ? parseInt(backR2) : null
                 });
             });
 
             if (filledCount === 0) {
-                alert("Bitte trage für mindestens eine Übung Ergebnisse ein.");
+                showToast("⚠️ Bitte mindestens eine Übung ausfüllen!");
                 return;
             }
 
             workoutLogs.push(sessionData);
             localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
             
-            alert("Einheit erfolgreich gespeichert!");
+            showToast("✅ Training erfolgreich gespeichert!");
             selectDay(currentDayKey);
             populateAnalyticsSelect();
         }
@@ -337,12 +434,22 @@
             if (tab === 'analytics') renderChart();
         }
 
+        function deleteSession(sessionId) {
+            if (confirm("Möchtest du diese Einheit wirklich löschen?")) {
+                workoutLogs = workoutLogs.filter(log => log.id !== sessionId);
+                localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
+                renderHistory();
+                populateAnalyticsSelect();
+                showToast("Einheit gelöscht");
+            }
+        }
+
         function renderHistory() {
             const container = document.getElementById('history-container');
             container.innerHTML = '';
 
             if (workoutLogs.length === 0) {
-                container.innerHTML = `<p class="text-sm text-slate-500">Noch keine Einheiten absolviert.</p>`;
+                container.innerHTML = `<p class="text-sm text-slate-500 py-4 text-center">Noch keine Einheiten absolviert.</p>`;
                 return;
             }
 
@@ -350,17 +457,24 @@
                 const div = document.createElement('div');
                 div.className = "bg-slate-800/60 p-4 rounded-xl border border-slate-800 space-y-2";
                 
-                let exerciseRows = log.exercises.map(e => `
-                    <div class="text-xs border-b border-slate-700/50 py-1 flex justify-between">
+                let exerciseRows = log.exercises.map(e => {
+                    let back2Str = e.backWeight2 ? ` | Back 2: <b class="text-indigo-400">${e.backWeight2}kg x ${e.backReps2}</b>` : '';
+                    return `
+                    <div class="text-xs border-b border-slate-700/50 py-1 flex justify-between items-center">
                         <span class="text-slate-300 font-medium">${e.name}</span>
-                        <span class="text-slate-400">Top: <b class="text-red-400">${e.topWeight}kg x ${e.topReps}</b> | Back: <b class="text-blue-400">${e.backWeight}kg x ${e.backReps}</b></span>
+                        <span class="text-slate-400">Top: <b class="text-red-400">${e.topWeight}kg x ${e.topReps}</b> | Back: <b class="text-blue-400">${e.backWeight}kg x ${e.backReps}</b>${back2Str}</span>
                     </div>
-                `).join('');
+                `}).join('');
 
                 div.innerHTML = `
                     <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                        <span class="font-bold text-sm text-blue-400">${log.dayTitle}</span>
-                        <span class="text-xs text-slate-400">${log.date}</span>
+                        <div>
+                            <span class="font-bold text-sm text-blue-400 block">${log.dayTitle}</span>
+                            <span class="text-[10px] text-slate-400">${log.date}</span>
+                        </div>
+                        <button onclick="deleteSession(${log.id})" class="text-xs text-red-400 hover:text-red-300 px-2 py-1 bg-red-950/40 rounded border border-red-900/50">
+                            Löschen
+                        </button>
                     </div>
                     <div class="space-y-1 pt-1">${exerciseRows}</div>
                 `;
@@ -386,7 +500,9 @@
         }
 
         function renderChart() {
-            const selectedExercise = document.getElementById('analytics-exercise-select').value;
+            const selectEl = document.getElementById('analytics-exercise-select');
+            if(!selectEl.value) return;
+            const selectedExercise = selectEl.value;
             const dates = [];
             const topWeights = [];
 
@@ -412,7 +528,7 @@
                         label: 'Top-Set Gewicht (kg)',
                         data: topWeights,
                         borderColor: '#0284c7',
-                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        backgroundColor: 'rgba(2, 132, 199, 0.15)',
                         fill: true,
                         tension: 0.2,
                         pointBackgroundColor: '#38bdf8',
@@ -439,12 +555,96 @@
             });
         }
 
+        // Rest Timer Funktionen
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerRemaining / 60);
+            const secs = timerRemaining % 60;
+            document.getElementById('timer-display').innerText = 
+                `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function setTimerPreset(seconds) {
+            timerDuration = seconds;
+            timerRemaining = seconds;
+            updateTimerDisplay();
+            if(timerRunning) {
+                clearInterval(timerInterval);
+                startTimerInterval();
+            }
+        }
+
+        function toggleTimer() {
+            if (timerRunning) {
+                clearInterval(timerInterval);
+                timerRunning = false;
+                document.getElementById('timer-start-btn').innerText = 'Start';
+                document.getElementById('timer-start-btn').className = 'bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition';
+            } else {
+                if (timerRemaining <= 0) timerRemaining = timerDuration;
+                startTimerInterval();
+            }
+        }
+
+        function startTimerInterval() {
+            timerRunning = true;
+            document.getElementById('timer-start-btn').innerText = 'Pause';
+            document.getElementById('timer-start-btn').className = 'bg-amber-600 hover:bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition';
+            
+            timerInterval = setInterval(() => {
+                timerRemaining--;
+                updateTimerDisplay();
+                if (timerRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    timerRunning = false;
+                    document.getElementById('timer-start-btn').innerText = 'Start';
+                    document.getElementById('timer-start-btn').className = 'bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition';
+                    playBeep();
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                    showToast("⏱️ Satzpause beendet!");
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            timerRemaining = timerDuration;
+            updateTimerDisplay();
+            document.getElementById('timer-start-btn').innerText = 'Start';
+            document.getElementById('timer-start-btn').className = 'bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition';
+        }
+
+        // Export / Import
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(workoutLogs, null, 2));
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", `workout_logs_${new Date().toISOString().slice(0,10)}.json`);
+            dlAnchorElem.setAttribute("download", `hybrid_workout_backup_${new Date().toISOString().slice(0,10)}.json`);
             dlAnchorElem.click();
+            showToast("Backup exportiert");
+        }
+
+        function importData(event) {
+            const fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    const importedLogs = JSON.parse(e.target.result);
+                    if (Array.isArray(importedLogs)) {
+                        workoutLogs = importedLogs;
+                        localStorage.setItem('workoutLogs', JSON.stringify(workoutLogs));
+                        selectDay(currentDayKey);
+                        populateAnalyticsSelect();
+                        showToast("Daten erfolgreich importiert!");
+                    } else {
+                        showToast("Fehler: Ungültiges Datenformat");
+                    }
+                } catch(err) {
+                    showToast("Fehler beim Einlesen der Datei");
+                }
+            };
+            if(event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0]);
+            }
         }
     </script>
 </body>
